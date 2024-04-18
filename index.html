@@ -1,112 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Divisor Finder</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-  }
-  .container {
-    margin: 20px auto;
-    max-width: 400px;
-  }
-  .keypad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .key {
-    padding: 10px;
-    border: 1px solid #ccc;
-    cursor: pointer;
-  }
-  #result {
-    margin-top: 10px;
-    font-size: 24px;
-    color: black;
-  }
-  .prime {
-    color: red;
-  }
-  .warning {
-    color: red;
-    font-style: italic;
-  }
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>Divisor Finder</h1>
-  <div class="keypad">
-    <div class="key" onclick="addNumber(1)">1</div>
-    <div class="key" onclick="addNumber(2)">2</div>
-    <div class="key" onclick="addNumber(3)">3</div>
-    <div class="key" onclick="addNumber(4)">4</div>
-    <div class="key" onclick="addNumber(5)">5</div>
-    <div class="key" onclick="addNumber(6)">6</div>
-    <div class="key" onclick="addNumber(7)">7</div>
-    <div class="key" onclick="addNumber(8)">8</div>
-    <div class="key" onclick="addNumber(9)">9</div>
-    <div class="key" onclick="addNumber(0)">0</div>
-    <div class="key" onclick="backspace()">Backspace</div>
-    <div class="key" onclick="reset()">Reset</div>
-  </div>
-  <div id="result"></div>
-  <div id="warning" class="warning" style="display: none;">Maximum number of digits reached. Ignoring additional input.</div>
-</div>
-<script>
-  const MAX_DIGITS = 9; // 最大桁数
-
-  let userInput = "";
-
-  function addNumber(num) {
-    if (userInput.length >= MAX_DIGITS) {
-      document.getElementById("warning").style.display = "block";
-      return;
-    }
-    userInput += num;
-    displayDivisors();
-  }
-
-  function backspace() {
-    userInput = userInput.slice(0, -1);
-    displayDivisors();
-  }
-
-  function reset() {
-    userInput = "";
-    document.getElementById("warning").style.display = "none";
-    displayDivisors();
-  }
-
-  function isPrime(num) {
-    if (num <= 1) return false;
-    if (num <= 3) return true;
-    if (num % 2 === 0 || num % 3 === 0) return false;
-    for (let i = 5; i * i <= num; i += 6) {
-      if (num % i === 0 || num % (i + 2) === 0) return false;
-    }
-    return true;
-  }
-
-  function displayDivisors() {
-    const num = parseInt(userInput);
-    const resultDiv = document.getElementById("result");
-    resultDiv.innerHTML = "";
-    if (!isNaN(num)) {
-      const primeClass = isPrime(num) ? "prime" : "";
-      resultDiv.innerHTML = "<span class='" + primeClass + "'>" + num + "</span><br>divisors: ";
-      for (let i = 1; i <= num; i++) {
-        if (num % i === 0) {
-          resultDiv.innerHTML += i + " ";
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divisor Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
         }
-      }
-    }
-  }
-</script>
+
+        .container {
+            margin: 20px auto;
+            max-width: 400px;
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .key {
+            padding: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        #github-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+
+        #result {
+            margin-top: 10px;
+            font-size: 24px;
+            color: black;
+        }
+
+        .prime {
+            color: red;
+        }
+
+        .warning {
+            color: red;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Divisor Finder</h1>
+        <div class="keypad">
+            <div class="key" onclick="addNumber(1)">1</div>
+            <div class="key" onclick="addNumber(2)">2</div>
+            <div class="key" onclick="addNumber(3)">3</div>
+            <div class="key" onclick="addNumber(4)">4</div>
+            <div class="key" onclick="addNumber(5)">5</div>
+            <div class="key" onclick="addNumber(6)">6</div>
+            <div class="key" onclick="addNumber(7)">7</div>
+            <div class="key" onclick="addNumber(8)">8</div>
+            <div class="key" onclick="addNumber(9)">9</div>
+            <div class="key" onclick="addNumber(0)">0</div>
+            <div class="key" onclick="backspace()">Backspace</div>
+            <div class="key" onclick="reset()">Reset</div>
+        </div>
+        <div id="result"></div>
+        <div id="warning" class="warning" style="display: none;">Maximum number of digits reached. Ignoring additional
+            input.</div>
+    </div>
+    <a href="https://github.com/stranger86952" id="github-link" target="_blank" rel="noopener noreferrer">My GitHub</a>
+    <script>
+        const MAX_DIGITS = 9; // 最大桁数
+
+        let userInput = "";
+
+        function addNumber(num) {
+            if (userInput.length >= MAX_DIGITS) {
+                document.getElementById("warning").style.display = "block";
+                return;
+            }
+            userInput += num;
+            displayDivisors();
+        }
+
+        function backspace() {
+            userInput = userInput.slice(0, -1);
+            displayDivisors();
+        }
+
+        function reset() {
+            userInput = "";
+            document.getElementById("warning").style.display = "none";
+            displayDivisors();
+        }
+
+        function isPrime(num) {
+            if (num <= 1) return false;
+            if (num <= 3) return true;
+            if (num % 2 === 0 || num % 3 === 0) return false;
+            for (let i = 5; i * i <= num; i += 6) {
+                if (num % i === 0 || num % (i + 2) === 0) return false;
+            }
+            return true;
+        }
+
+        function displayDivisors() {
+            const num = parseInt(userInput);
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = "";
+            if (!isNaN(num)) {
+                const primeClass = isPrime(num) ? "prime" : "";
+                resultDiv.innerHTML = "<span class='" + primeClass + "'>" + num + "</span><br>divisors: ";
+                for (let i = 1; i <= num; i++) {
+                    if (num % i === 0) {
+                        resultDiv.innerHTML += i + " ";
+                    }
+                }
+            }
+        }
+    </script>
 </body>
+
 </html>
