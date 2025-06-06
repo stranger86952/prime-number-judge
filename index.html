@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta viewport="width=device-width, initial-scale=1.0">
     <title>Divisor Finder</title>
     <style>
         body {
@@ -54,6 +54,11 @@
             color: red;
             font-style: italic;
         }
+
+        .progress {
+            color: blue;
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -77,33 +82,245 @@
         <div id="result"></div>
         <div id="warning" class="warning" style="display: none;">Maximum number of digits reached. Ignoring additional
             input.</div>
+        <div id="progress" class="progress" style="display: none;"></div>
     </div>
     <a href="https://github.com/stranger86952" id="github-link" target="_blank" rel="noopener noreferrer">My GitHub</a>
     <script>
-        const MAX_DIGITS = 9; // 最大桁数
-
+        const MAX_DIGITS = 30; // 30桁まで対応
         let userInput = "";
+        let calculationInProgress = false;
 
+        // 大きな数の計算用のBigInt対応関数
         function addNumber(num) {
             if (userInput.length >= MAX_DIGITS) {
                 document.getElementById("warning").style.display = "block";
                 return;
             }
+            if (calculationInProgress) return;
+
             userInput += num;
             displayDivisors();
         }
 
         function backspace() {
+            if (calculationInProgress) return;
             userInput = userInput.slice(0, -1);
             displayDivisors();
         }
 
         function reset() {
+            if (calculationInProgress && confirm("計算中です。停止しますか？")) {
+                calculationInProgress = false;
+            }
             userInput = "";
             document.getElementById("warning").style.display = "none";
+            document.getElementById("progress").style.display = "none";
             displayDivisors();
         }
 
+        // 高速素数判定（Miller-Rabin判定法）
+        function isPrimeBigInt(n) {
+            if (n <= 1n) return false;
+            if (n <= 3n) return true;
+            if (n % 2n === 0n || n % 3n === 0n) return false;
+
+            // 小さな素数での試し割り
+            const smallPrimes = [5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n, 41n, 43n, 47n];
+            for (let p of smallPrimes) {
+                if (n === p) return true;
+                if (n % p === 0n) return false;
+            }
+
+            // Miller-Rabin判定法
+            let d = n - 1n;
+            let r = 0;
+            while (d % 2n === 0n) {
+                d /= 2n;
+                r++;
+            }
+
+            // 複数の底で検証
+            const witnesses = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n];
+            for (let a of witnesses) {
+                if (a >= n) continue;
+
+                let x = modPow(a, d, n);
+                if (x === 1n || x === n - 1n) continue;
+
+                let composite = true;
+                for (let i = 0; i < r - 1; i++) {
+                    x = (x * x) % n;
+                    if (x === n - 1n) {
+                        composite = false;
+                        break;
+                    }
+                }
+                if (composite) return false;
+            }
+            return true;
+        }
+
+        // 高速べき乗剰余
+        function modPow(base, exp, mod) {
+            let result = 1n;
+            base = base % mod;
+            while (exp > 0n) {
+                if (exp % 2n === 1n) {
+                    result = (result * base) % mod;
+                }
+                exp = exp >> 1n;
+                base = (base * base) % mod;
+            }
+            return result;
+        }
+
+        // 素因数分解
+        async function primeFactorize(n) {
+            const factors = new Map();
+            let num = n;
+            let count = 0;
+
+            // 2で割り切れる限り割る
+            while (num % 2n === 0n) {
+                factors.set(2n, (factors.get(2n) || 0) + 1);
+                num /= 2n;
+            }
+
+            // 3以上の奇数で割る
+            for (let i = 3n; i * i <= num; i += 2n) {
+                while (num % i === 0n) {
+                    factors.set(i, (factors.get(i) || 0) + 1);
+                    num /= i;
+                }
+
+                count++;
+                if (count % 10000 === 0) {
+                    document.getElementById("progress").innerHTML = `素因数分解中... ${i} まで確認済み`;
+                    await new Promise(resolve => setTimeout(resolve, 1));
+                    if (!calculationInProgress) return new Map();
+                }
+            }
+
+            // 残りが1より大きければそれも素因数
+            if (num > 1n) {
+                factors.set(num, (factors.get(num) || 0) + 1);
+            }
+
+            return factors;
+        }
+
+        // 高速約数列挙
+        async function findDivisors(n) {
+            const divisors = [];
+            const sqrt = BigInt(Math.floor(Math.sqrt(Number(n))));
+            let count = 0;
+
+            for (let i = 1n; i <= sqrt; i++) {
+                if (n % i === 0n) {
+                    divisors.push(i);
+                    if (i !== n / i) {
+                        divisors.push(n / i);
+                    }
+                }
+
+                // 進捗表示とUI更新のため
+                count++;
+                if (count % 50000 === 0) {
+                    document.getElementById("progress").innerHTML = `約数計算中... ${count} / ${sqrt} checked`;
+                    await new Promise(resolve => setTimeout(resolve, 1));
+                    if (!calculationInProgress) return [];
+                }
+            }
+
+            return divisors.sort((a, b) => {
+                if (a < b) return -1;
+                if (a > b) return 1;
+                return 0;
+            });
+        }
+
+        async function displayDivisors() {
+            const resultDiv = document.getElementById("result");
+            const progressDiv = document.getElementById("progress");
+
+            if (userInput === "") {
+                resultDiv.innerHTML = "";
+                progressDiv.style.display = "none";
+                return;
+            }
+
+            try {
+                const num = BigInt(userInput);
+
+                if (num <= 0n) {
+                    resultDiv.innerHTML = "正の整数を入力してください";
+                    return;
+                }
+
+                calculationInProgress = true;
+                progressDiv.style.display = "block";
+                progressDiv.innerHTML = "計算開始...";
+
+                // 素数判定
+                const isPrimeResult = isPrimeBigInt(num);
+                const primeClass = isPrimeResult ? "prime" : "";
+
+                resultDiv.innerHTML = "<span class='" + primeClass + "'>" + num.toString() + "</span><br>";
+
+                if (isPrimeResult) {
+                    resultDiv.innerHTML += "この数は素数です<br>素因数分解: " + num.toString() + "<br>divisors: 1 " + num.toString();
+                    progressDiv.style.display = "none";
+                    calculationInProgress = false;
+                    return;
+                }
+
+                // 素因数分解
+                const factors = await primeFactorize(num);
+                if (!calculationInProgress) return;
+
+                // 素因数分解の表示
+                let factorization = "";
+                const factorEntries = Array.from(factors.entries()).sort((a, b) => {
+                    if (a[0] < b[0]) return -1;
+                    if (a[0] > b[0]) return 1;
+                    return 0;
+                });
+
+                for (let i = 0; i < factorEntries.length; i++) {
+                    const [prime, count] = factorEntries[i];
+                    if (i > 0) factorization += " × ";
+                    if (count === 1) {
+                        factorization += prime.toString();
+                    } else {
+                        factorization += prime.toString() + "<sup>" + count + "</sup>";
+                    }
+                }
+
+                resultDiv.innerHTML += "素因数分解: " + factorization + "<br>";
+
+                // 約数計算
+                const divisors = await findDivisors(num);
+
+                if (divisors.length > 0 && calculationInProgress) {
+                    if (divisors.length > 1000) {
+                        resultDiv.innerHTML += "約数の個数: " + divisors.length + " (表示制限のため最初の100個のみ表示)<br>";
+                        resultDiv.innerHTML += "divisors: " + divisors.slice(0, 100).map(d => d.toString()).join(" ") + " ...";
+                    } else {
+                        resultDiv.innerHTML += "divisors: " + divisors.map(d => d.toString()).join(" ");
+                    }
+                }
+
+                progressDiv.style.display = "none";
+                calculationInProgress = false;
+
+            } catch (error) {
+                resultDiv.innerHTML = "エラー: 有効な数値を入力してください";
+                progressDiv.style.display = "none";
+                calculationInProgress = false;
+            }
+        }
+
+        // 従来の小さな数用の高速処理
         function isPrime(num) {
             if (num <= 1) return false;
             if (num <= 3) return true;
@@ -112,21 +329,6 @@
                 if (num % i === 0 || num % (i + 2) === 0) return false;
             }
             return true;
-        }
-
-        function displayDivisors() {
-            const num = parseInt(userInput);
-            const resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = "";
-            if (!isNaN(num)) {
-                const primeClass = isPrime(num) ? "prime" : "";
-                resultDiv.innerHTML = "<span class='" + primeClass + "'>" + num + "</span><br>divisors: ";
-                for (let i = 1; i <= num; i++) {
-                    if (num % i === 0) {
-                        resultDiv.innerHTML += i + " ";
-                    }
-                }
-            }
         }
     </script>
 </body>
