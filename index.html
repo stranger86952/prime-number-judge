@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta viewport="width=device-width, initial-scale=1.0">
@@ -10,25 +9,21 @@
             font-family: Arial, sans-serif;
             text-align: center;
         }
-
         .container {
             margin: 20px auto;
             max-width: 400px;
         }
-
         .keypad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-bottom: 10px;
         }
-
         .key {
             padding: 10px;
             border: 1px solid #ccc;
             cursor: pointer;
         }
-
         #github-link {
             position: fixed;
             bottom: 20px;
@@ -39,29 +34,24 @@
             border-radius: 5px;
             text-decoration: none;
         }
-
         #result {
             margin-top: 10px;
             font-size: 24px;
             color: black;
         }
-
         .prime {
             color: red;
         }
-
         .warning {
             color: red;
             font-style: italic;
         }
-
         .progress {
             color: blue;
             font-style: italic;
         }
     </style>
 </head>
-
 <body>
     <div class="container">
         <h1>Divisor Finder</h1>
@@ -80,8 +70,7 @@
             <div class="key" onclick="reset()">Reset</div>
         </div>
         <div id="result"></div>
-        <div id="warning" class="warning" style="display: none;">Maximum number of digits reached. Ignoring additional
-            input.</div>
+        <div id="warning" class="warning" style="display: none;">Maximum number of digits reached. Ignoring additional input.</div>
         <div id="progress" class="progress" style="display: none;"></div>
     </div>
     <a href="https://github.com/stranger86952" id="github-link" target="_blank" rel="noopener noreferrer">My GitHub</a>
@@ -209,29 +198,30 @@
             return factors;
         }
 
-        // 高速約数列挙
-        async function findDivisors(n) {
+        // 素因数分解の結果から約数を生成
+        function generateDivisorsFromFactors(factors) {
+            const primes = Array.from(factors.keys());
+            const exponents = Array.from(factors.values());
             const divisors = [];
-            const sqrt = BigInt(Math.floor(Math.sqrt(Number(n))));
-            let count = 0;
 
-            for (let i = 1n; i <= sqrt; i++) {
-                if (n % i === 0n) {
-                    divisors.push(i);
-                    if (i !== n / i) {
-                        divisors.push(n / i);
-                    }
+            // 各素因数の指数の組み合わせを生成
+            function generateCombinations(index, currentDivisor) {
+                if (index === primes.length) {
+                    divisors.push(currentDivisor);
+                    return;
                 }
 
-                // 進捗表示とUI更新のため
-                count++;
-                if (count % 50000 === 0) {
-                    document.getElementById("progress").innerHTML = `約数計算中... ${count} / ${sqrt} checked`;
-                    await new Promise(resolve => setTimeout(resolve, 1));
-                    if (!calculationInProgress) return [];
+                const prime = primes[index];
+                const maxExp = exponents[index];
+                let power = 1n;
+
+                for (let exp = 0; exp <= maxExp; exp++) {
+                    generateCombinations(index + 1, currentDivisor * power);
+                    power *= prime;
                 }
             }
 
+            generateCombinations(0, 1n);
             return divisors.sort((a, b) => {
                 if (a < b) return -1;
                 if (a > b) return 1;
@@ -298,8 +288,11 @@
 
                 resultDiv.innerHTML += "素因数分解: " + factorization + "<br>";
 
-                // 約数計算
-                const divisors = await findDivisors(num);
+                // 素因数分解の結果から約数を生成
+                document.getElementById("progress").innerHTML = "約数を生成中...";
+                await new Promise(resolve => setTimeout(resolve, 1));
+
+                const divisors = generateDivisorsFromFactors(factors);
 
                 if (divisors.length > 0 && calculationInProgress) {
                     if (divisors.length > 1000) {
@@ -332,5 +325,4 @@
         }
     </script>
 </body>
-
 </html>
